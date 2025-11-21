@@ -1,6 +1,6 @@
-============================================================
 #  TYPE-SMART — FULL FEATURE EDITION (v3)
-============================================================
+Type-Smart (T) is fully offline typing practice tool.
+it is intended for people who cant afford to be always on onle but wanna practice their typing skills
 
 Features:
  - Real-time WPM
