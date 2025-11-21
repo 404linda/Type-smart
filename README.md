@@ -15,12 +15,11 @@ Features:
  - Sound effects
  - Typing-test mode (1 or 5 minutes)
  - All this on the CLI and completely offline
- - 
- ============================================================
+   
 
+help me build this and improve it
 # SETTING THINGS UP
 
-#windows
 windows is a little less straight forward
 you need to first download python from the microsoft store
 then follow the linux instruction
