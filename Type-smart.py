@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-# ============================================================
-#   ULTRA-LIGHT TYPING TRAINER — FULL FEATURE EDITION (v10)
-# ============================================================
-# Features:
-# - Real-time WPM
-# - Real-time accuracy %
-# - Colored target text
-# - Backspace handling
-# - Randomized practice mode
-# - Custom lessons
-# - Keyboard heatmap accuracy tracking
-# - Fancy UI themes
-# - Progress bars
-# - Sound effects
-# - Typing-test mode (1 or 5 minutes)
-# ============================================================
-
 import json, os, time, sys, tty, termios, random, shutil
 from datetime import datetime
 
