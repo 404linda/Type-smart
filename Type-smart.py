@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
+
+#(c) Type-smart, Tiny Canvas inc 
+
 import json, os, time, sys, tty, termios, random, shutil
 from datetime import datetime
 
 PROGRESS_FILE = os.path.expanduser("~/.typing_progress_v10.json")
 
-# ============================================================
 # THEMES
-# ============================================================
 
 THEMES = {
     "light": {
@@ -38,9 +39,7 @@ THEMES = {
 # Default theme
 THEME = THEMES["neon"]
 
-# ============================================================
 # SAMPLE LEVEL DATA (you can expand these)
-# ============================================================
 
 BEGINNER_LEVEL = [
     "asdf jkl qwe rty",
@@ -60,9 +59,7 @@ EXPERT_LEVEL = [
 
 LEVELS = {1: BEGINNER_LEVEL, 2: INTERMEDIATE_LEVEL, 3: EXPERT_LEVEL}
 
-# ============================================================
 # LOAD PROGRESS
-# ============================================================
 
 if os.path.exists(PROGRESS_FILE):
     with open(PROGRESS_FILE, "r") as f:
@@ -89,9 +86,7 @@ def save_progress():
         json.dump(progress, f)
     os.replace(tmp, PROGRESS_FILE)
 
-# ============================================================
 # HELPERS
-# ============================================================
 
 def normalize(s):
     return " ".join(s.strip().split())
@@ -108,9 +103,7 @@ def progress_bar(current, total, width=30):
     filled = int((current / total) * width)
     return "[" + "#" * filled + "-" * (width - filled) + "]"
 
-# ============================================================
 # KEYBOARD HEATMAP UPDATE
-# ============================================================
 
 def update_heatmap(key, correct):
     hm = progress["heatmap"]
@@ -122,9 +115,7 @@ def update_heatmap(key, correct):
         hm[key]["wrong"] += 1
     save_progress()
 
-# ============================================================
 # REAL-TIME TYPING ENGINE
-# ============================================================
 
 def live_typing_prompt(target):
     global THEME
@@ -191,9 +182,7 @@ def live_typing_prompt(target):
     elapsed = time.time() - start
     return typed, elapsed
 
-# ============================================================
 # TYPING TEST MODE
-# ============================================================
 
 def typing_test(minutes):
     print(f"\n{THEME['accent']}--- {minutes}-Minute Typing Test ---{THEME['reset']}\n")
@@ -211,9 +200,7 @@ def typing_test(minutes):
     print(f"\n{THEME['accent']}Test Complete!{THEME['reset']}")
     print(f"WPM: {wpm:.1f}\n")
 
-# ============================================================
 # PRACTICE LEVEL
-# ============================================================
 
 def practice_level(level_number, daily=False, random_mode=False):
     level_sets = LEVELS[level_number]
@@ -257,9 +244,7 @@ def practice_level(level_number, daily=False, random_mode=False):
         progress["current_set"] = 0
     save_progress()
 
-# ============================================================
 # CUSTOM LESSONS
-# ============================================================
 
 def add_custom_lesson():
     text = input("Enter text for your custom lesson:\n> ").strip()
@@ -274,9 +259,7 @@ def practice_custom_lessons():
     for lesson in progress["custom_lessons"]:
         live_typing_prompt(lesson)
 
-# ============================================================
 # DAILY PRACTICE
-# ============================================================
 
 def daily_practice():
     today = datetime.today().strftime("%Y-%m-%d")
@@ -289,9 +272,7 @@ def daily_practice():
     practice_level(progress["level"], daily=True)
     print(f"{THEME['good']}Daily practice done! Streak: {progress['streak']} days{THEME['reset']}\n")
 
-# ============================================================
 # STATS
-# ============================================================
 
 def show_stats():
     total_time = progress["total_time"] or 1
@@ -313,9 +294,7 @@ def show_stats():
         acc = (data["correct"] / total) * 100 if total else 100
         print(f"{repr(key)}: {acc:.1f}% accuracy")
 
-# ============================================================
 # THEME SWITCHER
-# ============================================================
 
 def change_theme():
     print("Themes:")
@@ -331,9 +310,7 @@ def change_theme():
     else:
         print("Invalid theme.\n")
 
-# ============================================================
 # MAIN MENU
-# ============================================================
 
 def main():
     while True:
