@@ -1,63 +1,152 @@
 #!/usr/bin/env python3
-import json, os, time, sys, tty, termios
+# ============================================================
+#   ULTRA-LIGHT TYPING TRAINER — FULL FEATURE EDITION (v10)
+# ============================================================
+# Features:
+# - Real-time WPM
+# - Real-time accuracy %
+# - Colored target text
+# - Backspace handling
+# - Randomized practice mode
+# - Custom lessons
+# - Keyboard heatmap accuracy tracking
+# - Fancy UI themes
+# - Progress bars
+# - Sound effects
+# - Typing-test mode (1 or 5 minutes)
+# ============================================================
+
+import json, os, time, sys, tty, termios, random, shutil
 from datetime import datetime
 
-PROGRESS_FILE = os.path.expanduser("~/.typing_progress_v8_fullcurriculum.json")
+PROGRESS_FILE = os.path.expanduser("~/.typing_progress_v10.json")
 
-# --------------------------
-# LEVELS & SETS
-# --------------------------
+# ============================================================
+# THEMES
+# ============================================================
 
-# Level 1 – Beginner (40 sets × 12 words/strings each)
+THEMES = {
+    "light": {
+        "text": "\033[37m",
+        "accent": "\033[36m",
+        "good": "\033[92m",
+        "bad": "\033[91m",
+        "hud": "\033[90m",
+        "reset": "\033[0m",
+    },
+    "dark": {
+        "text": "\033[97m",
+        "accent": "\033[94m",
+        "good": "\033[92m",
+        "bad": "\033[91m",
+        "hud": "\033[90m",
+        "reset": "\033[0m",
+    },
+    "neon": {
+        "text": "\033[96m",
+        "accent": "\033[95m",
+        "good": "\033[92m",
+        "bad": "\033[91m",
+        "hud": "\033[95m",
+        "reset": "\033[0m",
+    }
+}
+
+# Default theme
+THEME = THEMES["neon"]
+
+# ============================================================
+# SAMPLE LEVEL DATA (you can expand these)
+# ============================================================
+
 BEGINNER_LEVEL = [
-    "asdf jkl qwe rty", "zxcv bn m po iu", "qaz wsx edc rfv", "tgb yhn ujm ik,", "ol. p;/ as df",
-    "gh jk lq we rt yu", "zx cv bn mk lo pi", "uy tr ew as df gh", "jk lq we rt yu io", "pa sd fg hj kl",
-] + [f"wordset {i}" for i in range(30)]  # filler to reach 40 sets
+    "asdf jkl qwe rty",
+    "zxcv bn m po iu",
+    "qaz wsx edc rfv",
+] + [f"wordset {i}" for i in range(10)]
 
-# Level 2 – Intermediate (30 sets × 3–5 sentences each)
 INTERMEDIATE_LEVEL = [
-    "The cat sat on the mat.", "I like to read books.", "Typing helps improve focus.",
-    "Python is fun to learn.", "Practice daily to increase speed.", "Accuracy is more important than speed.",
-] + [f"This is intermediate sentence {i}." for i in range(24)]  # filler to reach 30 sets
+    "The quick brown fox jumps over the lazy dog.",
+    "Typing improves focus and muscle memory.",
+] + [f"Intermediate sentence {i}" for i in range(10)]
 
-# Level 3 – Expert (70 sets × 3–5 paragraphs each)
 EXPERT_LEVEL = [
-    "Typing fast requires accuracy and consistency.",
-    "Practice daily to improve speed and minimize errors.",
-    "Accuracy beats speed in the beginning stages.",
-    "This paragraph contains multiple sentences to improve fluid typing.",
-    "The goal is to type long passages with minimal mistakes.",
-] + [f"Expert paragraph {i}: This passage is designed to challenge your typing speed and accuracy." for i in range(65)]  # filler to reach 70 sets
+    "Expert typing requires endurance, precision, and mental stamina.",
+    "Long-form typing helps develop high sustained WPM.",
+] + [f"Expert paragraph {i}" for i in range(10)]
 
 LEVELS = {1: BEGINNER_LEVEL, 2: INTERMEDIATE_LEVEL, 3: EXPERT_LEVEL}
 
-# --------------------------
-# LOAD OR INITIALIZE PROGRESS
-# --------------------------
+# ============================================================
+# LOAD PROGRESS
+# ============================================================
+
 if os.path.exists(PROGRESS_FILE):
     with open(PROGRESS_FILE, "r") as f:
         progress = json.load(f)
 else:
     progress = {
+        "theme": "neon",
         "level": 1,
         "current_set": 0,
         "total_words": 0,
         "total_errors": 0,
         "total_time": 0.0,
+        "heatmap": {},  # accuracy by key
         "streak": 0,
-        "last_practice": ""
+        "last_practice": "",
+        "custom_lessons": []
     }
 
-def save_progress():
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump(progress, f)
+THEME = THEMES.get(progress["theme"], THEMES["neon"])
 
-# --------------------------
-# LIVE TYPING FUNCTION (FIXED)
-# --------------------------
+def save_progress():
+    tmp = PROGRESS_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(progress, f)
+    os.replace(tmp, PROGRESS_FILE)
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def normalize(s):
+    return " ".join(s.strip().split())
+
+def beep_correct():
+    sys.stdout.write("\a")
+    sys.stdout.flush()
+
+def beep_wrong():
+    sys.stdout.write("\a\033[91m\033[1m")
+    sys.stdout.flush()
+
+def progress_bar(current, total, width=30):
+    filled = int((current / total) * width)
+    return "[" + "#" * filled + "-" * (width - filled) + "]"
+
+# ============================================================
+# KEYBOARD HEATMAP UPDATE
+# ============================================================
+
+def update_heatmap(key, correct):
+    hm = progress["heatmap"]
+    if key not in hm:
+        hm[key] = {"correct": 0, "wrong": 0}
+    if correct:
+        hm[key]["correct"] += 1
+    else:
+        hm[key]["wrong"] += 1
+    save_progress()
+
+# ============================================================
+# REAL-TIME TYPING ENGINE
+# ============================================================
+
 def live_typing_prompt(target):
-    # FIX: show the target text
-    print("\nType this:\n> " + target + "\n", flush=True)
+    global THEME
+    print(f"\n{THEME['accent']}Type this:{THEME['reset']}")
+    print(f"{THEME['accent']}> {target}{THEME['reset']}\n")
 
     typed = ""
     start = time.time()
@@ -69,27 +158,49 @@ def live_typing_prompt(target):
         while True:
             ch = sys.stdin.read(1)
 
+            # ENTER ends typing
             if ch in ("\r", "\n"):
                 print("")
                 break
 
-            # Improved backspace support
+            # BACKSPACE
             elif ch in ("\x7f", "\x08"):
                 if typed:
                     typed = typed[:-1]
                     sys.stdout.write("\b \b")
                     sys.stdout.flush()
+                continue
 
+            typed += ch
+
+            # WPM & accuracy
+            elapsed = max(0.001, time.time() - start)
+            wpm = (len(typed.split()) / elapsed) * 60
+            correct_chars = sum(
+                typed[i] == target[i] if i < len(target) else False
+                for i in range(len(typed))
+            )
+            acc = (correct_chars / len(typed)) * 100 if typed else 100
+
+            # color feedback
+            correct_char = len(typed) <= len(target) and ch == target[len(typed)-1]
+            update_heatmap(ch, correct_char)
+
+            if correct_char:
+                sys.stdout.write(f"{THEME['good']}{ch}{THEME['reset']}")
+                beep_correct()
             else:
-                typed += ch
+                sys.stdout.write(f"{THEME['bad']}{ch}{THEME['reset']}")
+                beep_wrong()
 
-                # Color-coded correctness feedback
-                if len(typed) <= len(target) and ch == target[len(typed)-1]:
-                    sys.stdout.write(f"\033[92m{ch}\033[0m")  # green
-                else:
-                    sys.stdout.write(f"\033[91m{ch}\033[0m")  # red
+            sys.stdout.flush()
 
-                sys.stdout.flush()
+            sys.stdout.write(
+                f"\r{THEME['hud']}WPM: {wpm:.1f} | Accuracy: {acc:.1f}%{THEME['reset']}"
+            )
+            sys.stdout.flush()
+
+        print("\n")
 
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
@@ -97,42 +208,93 @@ def live_typing_prompt(target):
     elapsed = time.time() - start
     return typed, elapsed
 
-# --------------------------
-# PRACTICE FUNCTION
-# --------------------------
-def practice_level(level_number, daily=False):
-    level_sets = LEVELS[level_number]
-    set_idx = progress["current_set"]
+# ============================================================
+# TYPING TEST MODE
+# ============================================================
 
-    while set_idx < len(level_sets):
-        item = level_sets[set_idx]
+def typing_test(minutes):
+    print(f"\n{THEME['accent']}--- {minutes}-Minute Typing Test ---{THEME['reset']}\n")
+    deadline = time.time() + minutes * 60
+    total_typed = ""
+
+    while time.time() < deadline:
+        sample = random.choice(LEVELS[3])
+        typed, _ = live_typing_prompt(sample)
+        total_typed += " " + typed
+
+    words = len(total_typed.split())
+    wpm = words / minutes
+
+    print(f"\n{THEME['accent']}Test Complete!{THEME['reset']}")
+    print(f"WPM: {wpm:.1f}\n")
+
+# ============================================================
+# PRACTICE LEVEL
+# ============================================================
+
+def practice_level(level_number, daily=False, random_mode=False):
+    level_sets = LEVELS[level_number]
+
+    # random mode
+    if random_mode:
+        sets = random.sample(level_sets, len(level_sets))
+        set_idx = 0
+    else:
+        sets = level_sets
+        set_idx = progress["current_set"]
+
+    while set_idx < len(sets):
+        item = sets[set_idx]
         typed, elapsed = live_typing_prompt(item)
 
-        if typed.strip() == item.strip():
-            print("✅ Correct!")
+        if normalize(typed) == normalize(item):
+            print(f"{THEME['good']}Correct!{THEME['reset']}\n")
+
             progress["total_words"] += len(item.split())
             progress["total_time"] += elapsed
+
+            if not random_mode:
+                progress["current_set"] += 1
+
             set_idx += 1
-            progress["current_set"] = set_idx
             save_progress()
         else:
-            print("❌ Incorrect. Try again.")
+            print(f"{THEME['bad']}Incorrect. Try again.{THEME['reset']}\n")
             progress["total_errors"] += 1
             save_progress()
-            continue  # retry same set
+            continue
 
-        if not daily and set_idx < len(level_sets):
-            print(f"\n--- Moving to set {set_idx + 1} ---")
+        bar = progress_bar(set_idx, len(sets))
+        print(f"Progress: {bar} {set_idx}/{len(sets)}\n")
 
-    print(f"\n🎉 You completed Level {level_number}!")
-    if level_number < max(LEVELS.keys()):
-        progress["level"] = level_number + 1
+    print(f"\n{THEME['good']}🎉 Level {level_number} completed!{THEME['reset']}\n")
+
+    if level_number < 3:
+        progress["level"] += 1
         progress["current_set"] = 0
-        save_progress()
+    save_progress()
 
-# --------------------------
-# DAILY PRACTICE FUNCTION
-# --------------------------
+# ============================================================
+# CUSTOM LESSONS
+# ============================================================
+
+def add_custom_lesson():
+    text = input("Enter text for your custom lesson:\n> ").strip()
+    progress["custom_lessons"].append(text)
+    save_progress()
+    print("Custom lesson added!\n")
+
+def practice_custom_lessons():
+    if not progress["custom_lessons"]:
+        print("No custom lessons yet!\n")
+        return
+    for lesson in progress["custom_lessons"]:
+        live_typing_prompt(lesson)
+
+# ============================================================
+# DAILY PRACTICE
+# ============================================================
+
 def daily_practice():
     today = datetime.today().strftime("%Y-%m-%d")
     if progress["last_practice"] != today:
@@ -140,49 +302,94 @@ def daily_practice():
         progress["last_practice"] = today
         save_progress()
 
-    print(f"\n--- Daily Practice (Day {progress['streak']}) ---")
+    print(f"\n{THEME['accent']}--- Daily Practice (Day {progress['streak']}) ---{THEME['reset']}\n")
     practice_level(progress["level"], daily=True)
-    print(f"\n✅ Daily practice completed! Streak: {progress['streak']} days")
+    print(f"{THEME['good']}Daily practice done! Streak: {progress['streak']} days{THEME['reset']}\n")
 
-# --------------------------
-# STATS FUNCTION
-# --------------------------
+# ============================================================
+# STATS
+# ============================================================
+
 def show_stats():
-    total_time = progress['total_time'] if progress['total_time'] > 0 else 1
-    avg_wpm = progress['total_words'] / (total_time / 60) if progress['total_words'] else 0
+    total_time = progress["total_time"] or 1
+    avg_wpm = (progress["total_words"] / (total_time / 60)) if progress["total_words"] else 0
 
-    print("\n--- Typing Progress ---")
+    print("\n--- Stats ---")
+    print(f"Theme: {progress['theme']}")
     print(f"Level: {progress['level']}")
     print(f"Set: {progress['current_set'] + 1}")
-    print(f"Total words typed: {progress['total_words']}")
-    print(f"Total errors: {progress['total_errors']}")
-    print(f"Total time spent: {progress['total_time']:.2f} seconds")
-    print(f"Average WPM: {avg_wpm:.2f}")
-    print(f"Current streak: {progress['streak']} days")
-    print(f"Last practice: {progress['last_practice']}")
+    print(f"Total Words: {progress['total_words']}")
+    print(f"Errors: {progress['total_errors']}")
+    print(f"Avg WPM: {avg_wpm:.1f}")
+    print(f"Streak: {progress['streak']} days")
+    print(f"Last Practice: {progress['last_practice']}\n")
 
-# --------------------------
+    print("--- Heatmap (Accuracy by Key) ---")
+    for key, data in progress["heatmap"].items():
+        total = data["correct"] + data["wrong"]
+        acc = (data["correct"] / total) * 100 if total else 100
+        print(f"{repr(key)}: {acc:.1f}% accuracy")
+
+# ============================================================
+# THEME SWITCHER
+# ============================================================
+
+def change_theme():
+    print("Themes:")
+    for name in THEMES:
+        print(" -", name)
+    choice = input("Choose theme: ").strip().lower()
+    if choice in THEMES:
+        progress["theme"] = choice
+        global THEME
+        THEME = THEMES[choice]
+        save_progress()
+        print("Theme changed!\n")
+    else:
+        print("Invalid theme.\n")
+
+# ============================================================
 # MAIN MENU
-# --------------------------
+# ============================================================
+
 def main():
     while True:
-        print("\n--- Ultra-Light Typing Trainer v8 Full Curriculum ---")
-        print("1. Practice current level")
+        print(f"\n{THEME['accent']}=== Typing Trainer v10 ==={THEME['reset']}")
+        print("1. Practice level")
         print("2. Daily practice")
-        print("3. Show progress & streak")
-        print("4. Exit")
-        choice = input("> ")
+        print("3. Practice (randomized)")
+        print("4. Add custom lesson")
+        print("5. Practice custom lessons")
+        print("6. Typing test (1 min)")
+        print("7. Typing test (5 min)")
+        print("8. Show stats")
+        print("9. Change theme")
+        print("0. Exit")
+
+        choice = input("> ").strip()
 
         if choice == "1":
             practice_level(progress["level"])
         elif choice == "2":
             daily_practice()
         elif choice == "3":
-            show_stats()
+            practice_level(progress["level"], random_mode=True)
         elif choice == "4":
+            add_custom_lesson()
+        elif choice == "5":
+            practice_custom_lessons()
+        elif choice == "6":
+            typing_test(1)
+        elif choice == "7":
+            typing_test(5)
+        elif choice == "8":
+            show_stats()
+        elif choice == "9":
+            change_theme()
+        elif choice == "0":
             break
         else:
-            print("Invalid choice!")
+            print("Invalid choice!\n")
 
 if __name__ == "__main__":
     main()
