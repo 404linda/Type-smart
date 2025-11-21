@@ -1,6 +1,7 @@
 ============================================================
 #  TYPE-SMART — FULL FEATURE EDITION (v3)
 ============================================================
+
 Features:
  - Real-time WPM
  - Real-time accuracy %
@@ -14,6 +15,7 @@ Features:
  - Sound effects
  - Typing-test mode (1 or 5 minutes)
  - All this on the CLI and completely offline
+ - 
  ============================================================
 
 # SETTING THINGS UP
